@@ -50,11 +50,9 @@ if not st.session_state.usuario_logado:
     email = st.text_input("E-mail")
     senha = st.text_input("Senha", type="password")
 
-    if st.button("Entrar"):
-
+        if st.button("Entrar"):
         if not email or not senha:
             st.warning("Informe o e-mail e a senha.")
-
         else:
             try:
                 resposta_login = supabase.auth.sign_in_with_password({
@@ -62,14 +60,12 @@ if not st.session_state.usuario_logado:
                     "password": senha
                 })
 
-              if resposta_login.user and resposta_login.session:
-                  st.session_state.usuario_logado = True
-                  st.session_state.usuario_email = email
-
-                  st.session_state.access_token = resposta_login.session.access_token
-                  st.session_state.refresh_token = resposta_login.session.refresh_token
-
-                  st.rerun()
+                if resposta_login.user and resposta_login.session:
+                    st.session_state.usuario_logado = True
+                    st.session_state.usuario_email = email
+                    st.session_state.access_token = resposta_login.session.access_token
+                    st.session_state.refresh_token = resposta_login.session.refresh_token
+                    st.rerun()
 
             except Exception:
                 st.error("E-mail ou senha incorretos.")
