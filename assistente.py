@@ -62,15 +62,35 @@ if not st.session_state.usuario_logado:
                     "password": senha
                 })
 
-                if resposta_login.user:
-                    st.session_state.usuario_logado = True
-                    st.session_state.usuario_email = email
-                    st.rerun()
+              if resposta_login.user and resposta_login.session:
+                  st.session_state.usuario_logado = True
+                  st.session_state.usuario_email = email
+
+                  st.session_state.access_token = resposta_login.session.access_token
+                  st.session_state.refresh_token = resposta_login.session.refresh_token
+
+                  st.rerun()
 
             except Exception:
                 st.error("E-mail ou senha incorretos.")
 
     st.stop()
+    # Restaura a sessão autenticada do Supabase após o rerun
+if (
+    st.session_state.get("access_token")
+    and st.session_state.get("refresh_token")
+):
+    try:
+        supabase.auth.set_session(
+            st.session_state.access_token,
+            st.session_state.refresh_token
+        )
+    except Exception:
+        st.session_state.usuario_logado = False
+        st.session_state.pop("access_token", None)
+        st.session_state.pop("refresh_token", None)
+        st.error("Sua sessão expirou. Faça login novamente.")
+        st.rerun()
 # ==================================================
 # SUPABASE
 # ==================================================
