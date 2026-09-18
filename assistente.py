@@ -35,7 +35,42 @@ supabase = create_client(
     supabase_url,
     supabase_key
 )
+# ==================================================
+# LOGIN
+# ==================================================
 
+if "usuario_logado" not in st.session_state:
+    st.session_state.usuario_logado = False
+
+if not st.session_state.usuario_logado:
+
+    st.title("🔐 Acesso ao Assistente")
+    st.write("Entre com seu e-mail e senha para continuar.")
+
+    email = st.text_input("E-mail")
+    senha = st.text_input("Senha", type="password")
+
+    if st.button("Entrar"):
+
+        if not email or not senha:
+            st.warning("Informe o e-mail e a senha.")
+
+        else:
+            try:
+                resposta_login = supabase.auth.sign_in_with_password({
+                    "email": email,
+                    "password": senha
+                })
+
+                if resposta_login.user:
+                    st.session_state.usuario_logado = True
+                    st.session_state.usuario_email = email
+                    st.rerun()
+
+            except Exception:
+                st.error("E-mail ou senha incorretos.")
+
+    st.stop()
 # ==================================================
 # SUPABASE
 # ==================================================
