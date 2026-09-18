@@ -42,15 +42,40 @@ supabase = create_client(
 if "usuario_logado" not in st.session_state:
     st.session_state.usuario_logado = False
 
-if not st.session_state.usuario_logado:
+if "usuario_email" not in st.session_state:
+    st.session_state.usuario_email = ""
 
+if "access_token" not in st.session_state:
+    st.session_state.access_token = None
+
+if "refresh_token" not in st.session_state:
+    st.session_state.refresh_token = None
+
+# Restaura a sessão autenticada do Supabase após cada rerun.
+if (
+    st.session_state.usuario_logado
+    and st.session_state.access_token
+    and st.session_state.refresh_token
+):
+    try:
+        supabase.auth.set_session(
+            st.session_state.access_token,
+            st.session_state.refresh_token
+        )
+    except Exception:
+        st.session_state.usuario_logado = False
+        st.session_state.usuario_email = ""
+        st.session_state.access_token = None
+        st.session_state.refresh_token = None
+
+if not st.session_state.usuario_logado:
     st.title("🔐 Acesso ao Assistente")
     st.write("Entre com seu e-mail e senha para continuar.")
 
     email = st.text_input("E-mail")
     senha = st.text_input("Senha", type="password")
 
-        if st.button("Entrar"):
+    if st.button("Entrar"):
         if not email or not senha:
             st.warning("Informe o e-mail e a senha.")
         else:
@@ -66,27 +91,13 @@ if not st.session_state.usuario_logado:
                     st.session_state.access_token = resposta_login.session.access_token
                     st.session_state.refresh_token = resposta_login.session.refresh_token
                     st.rerun()
-
+                else:
+                    st.error("Não foi possível iniciar a sessão.")
             except Exception:
                 st.error("E-mail ou senha incorretos.")
 
     st.stop()
-    # Restaura a sessão autenticada do Supabase após o rerun
-if (
-    st.session_state.get("access_token")
-    and st.session_state.get("refresh_token")
-):
-    try:
-        supabase.auth.set_session(
-            st.session_state.access_token,
-            st.session_state.refresh_token
-        )
-    except Exception:
-        st.session_state.usuario_logado = False
-        st.session_state.pop("access_token", None)
-        st.session_state.pop("refresh_token", None)
-        st.error("Sua sessão expirou. Faça login novamente.")
-        st.rerun()
+
 # ==================================================
 # SUPABASE
 # ==================================================
@@ -268,6 +279,23 @@ pagina = st.sidebar.radio(
 )
 
 st.sidebar.caption("Beta 0.6 • Supabase")
+
+st.sidebar.divider()
+st.sidebar.caption(f"Conectado: {st.session_state.get('usuario_email', '')}")
+
+if st.sidebar.button("🚪 Sair"):
+    try:
+        supabase.auth.sign_out()
+    except Exception:
+        pass
+
+    st.session_state.usuario_logado = False
+    st.session_state.usuario_email = ""
+    st.session_state.access_token = None
+    st.session_state.refresh_token = None
+    st.session_state.analise = None
+    st.session_state.mensagem_original = ""
+    st.rerun()
 
 
 # ==================================================
