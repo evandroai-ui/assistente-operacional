@@ -745,12 +745,9 @@ Observação técnica:
                     st.session_state.analise = None
                     st.session_state.mensagem_original = ""
 
-                except Exception:
-
-                    st.error(
-                        "Não foi possível salvar o "
-                        "atendimento. Tente novamente."
-                    )
+                except Exception as e:
+                    st.error("Não foi possível salvar o atendimento.")
+                    st.code(str(e))
 
 
 # ==================================================
