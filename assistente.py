@@ -143,6 +143,58 @@ st.markdown("""
         .dops-banner {margin-top:14px;min-width:0;}
         .dops-flow {grid-template-columns:1fr;}
     }
+
+    /* V6 - acabamento visual */
+    [data-testid="stSidebar"] {
+        min-width: 245px;
+    }
+    [data-testid="stSidebar"] [role="radiogroup"] {
+        gap: 7px;
+    }
+    [data-testid="stSidebar"] [role="radiogroup"] label {
+        background: transparent;
+        border-radius: 12px;
+        padding: 9px 10px;
+        transition: all .18s ease;
+    }
+    [data-testid="stSidebar"] [role="radiogroup"] label:hover {
+        background: #eef4ff;
+    }
+    [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
+        background: linear-gradient(90deg,#1769ff,#3157f5);
+        color: white !important;
+        box-shadow: 0 6px 16px rgba(31,91,255,.20);
+    }
+    [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p {
+        color: white !important;
+        font-weight: 700;
+    }
+    [data-testid="stSidebar"] [role="radiogroup"] label > div:first-child {
+        display: none;
+    }
+    .stMainBlockContainer {
+        max-width: 1380px;
+    }
+    div[data-testid="stMetric"] {
+        min-height: 122px;
+        display: flex;
+        justify-content: center;
+        border-radius: 20px;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 2rem;
+        font-weight: 800;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 18px;
+    }
+    .stAlert {
+        border-radius: 14px;
+    }
+    hr {
+        border-color: #e7edf7 !important;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -456,7 +508,6 @@ st.sidebar.caption("Assistente Operacional")
 opcoes_menu = [
     "🏠 Dashboard",
     "📥 Atendimentos",
-    "📱 Nova solicitação manual",
     "📚 Histórico"
 ]
 
@@ -469,7 +520,7 @@ pagina = st.sidebar.radio(
     key="pagina_menu"
 )
 
-st.sidebar.caption("V4 Beta • Telegram + IA")
+st.sidebar.caption("DOPS v5.1 • Beta")
 st.sidebar.markdown("---")
 st.sidebar.caption("EM DESENVOLVIMENTO")
 st.sidebar.caption("👥 Clientes  •  📄 Modelos")
@@ -514,7 +565,7 @@ if pagina == "🏠 Dashboard":
     <div class="dops-hero">
         <div>
             <h1>Visão geral da operação</h1>
-            <p>Veja o que precisa da sua atenção agora.</p>
+            <p>Solicitações, orçamentos e retornos em um só lugar.</p>
         </div>
         <div class="dops-banner">
             Menos tempo com burocracia.<br>
@@ -533,13 +584,13 @@ if pagina == "🏠 Dashboard":
     with col4:
         st.metric("Aprovados", aprovados)
 
-    st.subheader("🔔 Novas solicitações")
+    st.subheader("📥 Novas solicitações")
 
     if not novas:
         st.success("Você não tem novas solicitações para visualizar.")
     else:
         st.caption(
-            "Aqui aparecem somente os atendimentos que ainda não foram abertos pelo profissional."
+            "Recebidas pelo Telegram e ainda não visualizadas."
         )
 
         for item in novas:
@@ -556,7 +607,7 @@ if pagina == "🏠 Dashboard":
                 )
             with c3:
                 if st.button(
-                    "Ver solicitação →",
+                    "Abrir solicitação →",
                     key=f"abrir_nova_{item['id']}",
                     use_container_width=True
                 ):
@@ -568,8 +619,8 @@ if pagina == "🏠 Dashboard":
 
     st.markdown("""
     <div class="dops-beta">
-        ℹ️ <b>DOPS Beta:</b> solicitações recebidas pelo Telegram são organizadas
-        pela IA e chegam ao painel para revisão, orçamento e envio pelo profissional.
+        💡 <b>Foco no que importa:</b> as solicitações chegam automaticamente pelo Telegram.
+        Revise as informações, prepare o orçamento e envie ao cliente.
     </div>
     """, unsafe_allow_html=True)
 
