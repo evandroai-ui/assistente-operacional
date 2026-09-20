@@ -195,6 +195,51 @@ st.markdown("""
         border-color: #e7edf7 !important;
     }
 
+
+    /* V7 - acabamento final */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child {
+        display: none !important;
+        width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label {
+        padding: 10px 12px !important;
+        margin-bottom: 3px;
+        border: 1px solid transparent;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {
+        background: linear-gradient(90deg,#1769ff,#3157f5) !important;
+        border-color: transparent !important;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:not(:has(input:checked)):hover {
+        border-color:#dce7f7;
+        background:#f3f7ff !important;
+    }
+    .dops-empty {
+        background:#fff;
+        border:1px dashed #cfdaeb;
+        border-radius:18px;
+        padding:30px 24px;
+        text-align:center;
+        color:#64748b;
+        margin: 8px 0 20px 0;
+    }
+    .dops-empty b {
+        display:block;
+        color:#17233f;
+        font-size:1.05rem;
+        margin-bottom:5px;
+    }
+    .dops-request {
+        background:#fff;
+        border:1px solid #e1e9f5;
+        border-radius:18px;
+        padding:16px 18px 7px 18px;
+        margin-bottom:10px;
+        box-shadow:0 5px 16px rgba(27,63,122,.045);
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -520,7 +565,7 @@ pagina = st.sidebar.radio(
     key="pagina_menu"
 )
 
-st.sidebar.caption("DOPS v5.1 • Beta")
+st.sidebar.caption("DOPS v6.0 • Beta")
 st.sidebar.markdown("---")
 st.sidebar.caption("EM DESENVOLVIMENTO")
 st.sidebar.caption("👥 Clientes  •  📄 Modelos")
@@ -587,35 +632,41 @@ if pagina == "🏠 Dashboard":
     st.subheader("📥 Novas solicitações")
 
     if not novas:
-        st.success("Você não tem novas solicitações para visualizar.")
+        st.markdown("""
+        <div class="dops-empty">
+            <b>✓ Tudo em dia por aqui</b>
+            Nenhuma nova solicitação aguardando sua visualização.
+        </div>
+        """, unsafe_allow_html=True)
     else:
         st.caption(
             "Recebidas pelo Telegram e ainda não visualizadas."
         )
 
         for item in novas:
-            c1, c2, c3 = st.columns([2.2, 2.2, 1])
-            with c1:
-                st.markdown(
-                    f"**{item.get('cliente') or 'Cliente'}**  \\n"
-                    f"{item.get('servico') or 'Serviço não informado'}"
-                )
-            with c2:
-                st.markdown(
-                    f"📍 {item.get('localizacao') or 'Localização não informada'}  \\n"
-                    f"🕒 {item.get('data') or ''}"
-                )
-            with c3:
-                if st.button(
-                    "Abrir solicitação →",
-                    key=f"abrir_nova_{item['id']}",
-                    use_container_width=True
-                ):
-                    marcar_visualizado(item["id"], True)
-                    st.session_state.atendimento_selecionado = item["id"]
-                    st.session_state.pagina_menu = "📥 Atendimentos"
-                    st.rerun()
-            st.divider()
+            with st.container(border=True):
+                c1, c2, c3 = st.columns([2.2, 2.2, 1])
+                with c1:
+                    st.markdown(
+                        f"### {item.get('cliente') or 'Cliente'}\n"
+                        f"{item.get('servico') or 'Serviço não informado'}"
+                    )
+                with c2:
+                    st.markdown(
+                        f"📍 **{item.get('localizacao') or 'Localização não informada'}**  \\n"
+                        f"🕒 {item.get('data') or ''}"
+                    )
+                with c3:
+                    if st.button(
+                        "Abrir solicitação →",
+                        key=f"abrir_nova_{item['id']}",
+                        type="primary",
+                        use_container_width=True
+                    ):
+                        marcar_visualizado(item["id"], True)
+                        st.session_state.atendimento_selecionado = item["id"]
+                        st.session_state.pagina_menu = "📥 Atendimentos"
+                        st.rerun()
 
     st.markdown("""
     <div class="dops-beta">
