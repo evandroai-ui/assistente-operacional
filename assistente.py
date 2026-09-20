@@ -306,9 +306,29 @@ def buscar_atendimentos():
         .select(
             "id,data,cliente,categoria,servico,localizacao,"
             "mensagem_original,resumo,materiais,valor_materiais,"
-            "valor_mao_obra,valor_total,prazo,observacoes,status,telegram_chat_id"
+            "valor_mao_obra,valor_total,prazo,observacoes,status,telegram_chat_id,visualizado"
         )
         .order("id", desc=True).execute()
+    )
+    return resposta.data
+
+
+def marcar_visualizado(id_atendimento, visualizado=True):
+    return (
+        supabase.table("atendimentos")
+        .update({"visualizado": bool(visualizado)})
+        .eq("id", id_atendimento)
+        .execute()
+    )
+
+
+def buscar_novas_solicitacoes():
+    resposta = (
+        supabase.table("atendimentos")
+        .select("id,data,cliente,servico,localizacao,status,telegram_chat_id,visualizado")
+        .eq("visualizado", False)
+        .order("id", desc=True)
+        .execute()
     )
     return resposta.data
 
@@ -433,13 +453,20 @@ if "mensagem_original" not in st.session_state:
 st.sidebar.title("🔵 DOPS")
 st.sidebar.caption("Assistente Operacional")
 
+opcoes_menu = [
+    "🏠 Dashboard",
+    "📥 Atendimentos",
+    "📱 Nova solicitação manual",
+    "📚 Histórico"
+]
+
+if "pagina_menu" not in st.session_state:
+    st.session_state.pagina_menu = "🏠 Dashboard"
+
 pagina = st.sidebar.radio(
     "Menu",
-    [
-        "🏠 Dashboard",
-        "📱 Nova solicitação",
-        "📚 Histórico"
-    ]
+    opcoes_menu,
+    key="pagina_menu"
 )
 
 st.sidebar.caption("V4 Beta • Telegram + IA")
@@ -476,13 +503,18 @@ if pagina == "🏠 Dashboard":
     total = contar_status()
     em_revisao = contar_status("Em revisão")
     aguardando = contar_status("Aguardando retorno")
-    enviados = contar_status("Enviado") + aguardando
+    aprovados = contar_status("Aprovado")
+
+    try:
+        novas = buscar_novas_solicitacoes()
+    except Exception:
+        novas = []
 
     st.markdown("""
     <div class="dops-hero">
         <div>
-            <h1>Olá, profissional 👋</h1>
-            <p>Aqui está o resumo da sua operação.</p>
+            <h1>Visão geral da operação</h1>
+            <p>Veja o que precisa da sua atenção agora.</p>
         </div>
         <div class="dops-banner">
             Menos tempo com burocracia.<br>
@@ -493,62 +525,51 @@ if pagina == "🏠 Dashboard":
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Solicitações registradas", total)
+        st.metric("Novas solicitações", len(novas))
     with col2:
-        st.metric("Em análise", em_revisao)
+        st.metric("Em revisão", em_revisao)
     with col3:
-        st.metric("Orçamentos enviados", enviados)
-    with col4:
         st.metric("Aguardando retorno", aguardando)
+    with col4:
+        st.metric("Aprovados", aprovados)
 
-    st.markdown("""
-    <div class="dops-flow">
-        <div class="dops-step">
-            <div class="num">1</div>
-            <b>Cliente entra em contato</b>
-            <span>Recebe a solicitação pelo Telegram e a IA inicia a conversa.</span>
-        </div>
-        <div class="dops-step">
-            <div class="num">2</div>
-            <b>IA coleta e organiza</b>
-            <span>Faz perguntas, coleta as informações e estrutura a solicitação.</span>
-        </div>
-        <div class="dops-step">
-            <div class="num">3</div>
-            <b>Você revisa e define</b>
-            <span>Analisa as informações, define valores e prepara o orçamento.</span>
-        </div>
-        <div class="dops-step">
-            <div class="num">4</div>
-            <b>Orçamento enviado</b>
-            <span>O cliente recebe o orçamento diretamente no Telegram.</span>
-        </div>
-        <div class="dops-step">
-            <div class="num">5</div>
-            <b>Aguardando retorno</b>
-            <span>O acompanhamento continua pelo painel e pelo canal do cliente.</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.subheader("🔔 Novas solicitações")
 
-    st.subheader("📌 Operação atual")
-    c1, c2 = st.columns([1.25, 1])
-
-    with c1:
-        st.info(
-            "O beta já recebe solicitações pelo Telegram, organiza as informações "
-            "com IA e envia o orçamento aprovado pelo profissional de volta ao cliente."
+    if not novas:
+        st.success("Você não tem novas solicitações para visualizar.")
+    else:
+        st.caption(
+            "Aqui aparecem somente os atendimentos que ainda não foram abertos pelo profissional."
         )
 
-    with c2:
-        st.success(
-            "Fluxo em validação: Telegram → IA → Supabase → Painel → Orçamento → Telegram"
-        )
+        for item in novas:
+            c1, c2, c3 = st.columns([2.2, 2.2, 1])
+            with c1:
+                st.markdown(
+                    f"**{item.get('cliente') or 'Cliente'}**  \\n"
+                    f"{item.get('servico') or 'Serviço não informado'}"
+                )
+            with c2:
+                st.markdown(
+                    f"📍 {item.get('localizacao') or 'Localização não informada'}  \\n"
+                    f"🕒 {item.get('data') or ''}"
+                )
+            with c3:
+                if st.button(
+                    "Ver solicitação →",
+                    key=f"abrir_nova_{item['id']}",
+                    use_container_width=True
+                ):
+                    marcar_visualizado(item["id"], True)
+                    st.session_state.atendimento_selecionado = item["id"]
+                    st.session_state.pagina_menu = "📥 Atendimentos"
+                    st.rerun()
+            st.divider()
 
     st.markdown("""
     <div class="dops-beta">
-        ℹ️ <b>Versão Beta:</b> o núcleo do fluxo está funcional. Clientes, agenda,
-        modelos, relatórios e outras automações fazem parte da evolução planejada do produto.
+        ℹ️ <b>DOPS Beta:</b> solicitações recebidas pelo Telegram são organizadas
+        pela IA e chegam ao painel para revisão, orçamento e envio pelo profissional.
     </div>
     """, unsafe_allow_html=True)
 
@@ -557,9 +578,9 @@ if pagina == "🏠 Dashboard":
 # NOVA SOLICITAÇÃO
 # ==================================================
 
-elif pagina == "📱 Nova solicitação":
+elif pagina == "📱 Nova solicitação manual":
 
-    st.title("📱 Nova solicitação")
+    st.title("📱 Nova solicitação manual")
 
     st.write(
         "Cole abaixo a mensagem recebida "
@@ -1029,10 +1050,10 @@ Observação técnica:
 # HISTÓRICO
 # ==================================================
 
-elif pagina == "📚 Histórico":
+elif pagina == "📥 Atendimentos":
 
-    st.title("📚 Histórico de atendimentos")
-    st.caption("Revise a solicitação, prepare o orçamento e envie ao cliente pelo Telegram.")
+    st.title("📥 Atendimentos")
+    st.caption("Abra uma solicitação, revise os dados e prepare o orçamento.")
 
     try:
         atendimentos = buscar_atendimentos()
@@ -1054,7 +1075,13 @@ elif pagina == "📚 Histórico":
                 status = atendimento.get("status", "Em revisão") or "Em revisão"
                 valor_total_atual = float(atendimento.get("valor_total", 0) or 0)
 
-                with st.expander(f"#{id_atendimento} — {cliente_nome} — {servico}"):
+                atendimento_selecionado = st.session_state.get("atendimento_selecionado")
+                abrir_automaticamente = (atendimento_selecionado == id_atendimento)
+
+                with st.expander(
+                    f"#{id_atendimento} — {cliente_nome} — {servico}",
+                    expanded=abrir_automaticamente
+                ):
                     c1, c2 = st.columns(2)
                     with c1:
                         st.write("**Data:**", data)
@@ -1233,6 +1260,40 @@ Se quiser confirmar o serviço ou tirar alguma dúvida, pode responder por aqui.
                         atualizar_status(id_atendimento, novo_status)
                         st.success("Status atualizado!")
                         st.rerun()
+
+    except Exception as e:
+        st.error("Não foi possível carregar o histórico.")
+        st.code(str(e))
+
+
+# ==================================================
+# HISTÓRICO RESUMIDO
+# ==================================================
+
+elif pagina == "📚 Histórico":
+
+    st.title("📚 Histórico")
+    st.caption("Visão rápida de todos os atendimentos registrados.")
+
+    try:
+        atendimentos = buscar_atendimentos()
+
+        if not atendimentos:
+            st.info("Nenhum atendimento registrado ainda.")
+        else:
+            for atendimento in atendimentos:
+                c1, c2, c3, c4 = st.columns([0.7, 2.2, 2.2, 1.3])
+                with c1:
+                    st.write(f"**#{atendimento['id']}**")
+                with c2:
+                    st.write(atendimento.get("cliente") or "Cliente")
+                    st.caption(atendimento.get("servico") or "Serviço não informado")
+                with c3:
+                    st.write(atendimento.get("localizacao") or "Localização não informada")
+                    st.caption(atendimento.get("data") or "")
+                with c4:
+                    st.write(atendimento.get("status") or "Em revisão")
+                st.divider()
 
     except Exception as e:
         st.error("Não foi possível carregar o histórico.")
