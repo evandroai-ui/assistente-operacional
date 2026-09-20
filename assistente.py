@@ -987,13 +987,21 @@ Observações:
 Se quiser confirmar ou tirar alguma dúvida, pode responder por aqui."""
 
                     st.subheader("📄 Mensagem que será enviada")
-                    mensagem_final = st.text_area(
-                        "Revise antes do envio:",
+
+                    st.text_area(
+                        "Prévia atualizada automaticamente:",
                         value=proposta,
                         height=330,
-                        key=f"proposta_{id_atendimento}"
+                        key=f"previa_atual_{id_atendimento}",
+                        disabled=True
                     )
-                    st.caption("A IA organiza. O profissional define valores, revisa e aprova.")
+
+                    mensagem_final = proposta
+
+                    st.caption(
+                        "A prévia acompanha automaticamente os valores acima. "
+                        "A IA organiza; o profissional define valores, revisa e aprova."
+                    )
 
                     cs, ce = st.columns(2)
                     with cs:
