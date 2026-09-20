@@ -5,6 +5,7 @@ from supabase import create_client
 import os
 import json
 import time
+import requests
 from datetime import datetime
 
 st.set_page_config(
@@ -20,6 +21,7 @@ st.set_page_config(
 gemini_key = os.environ.get("GEMINI_API_KEY")
 supabase_url = os.environ.get("SUPABASE_URL")
 supabase_key = os.environ.get("SUPABASE_KEY")
+telegram_bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 if not gemini_key:
     st.error("Configuração da IA não encontrada.")
@@ -167,21 +169,15 @@ def salvar_atendimento(
 
 
 def buscar_atendimentos():
-
     resposta = (
-        supabase
-        .table("atendimentos")
+        supabase.table("atendimentos")
         .select(
-            "id,data,cliente,servico,"
-            "localizacao,valor_total,status"
+            "id,data,cliente,categoria,servico,localizacao,"
+            "mensagem_original,resumo,materiais,valor_materiais,"
+            "valor_mao_obra,valor_total,prazo,observacoes,status,telegram_chat_id"
         )
-        .order(
-            "id",
-            desc=True
-        )
-        .execute()
+        .order("id", desc=True).execute()
     )
-
     return resposta.data
 
 
@@ -204,6 +200,41 @@ def atualizar_status(
     )
 
     return resposta
+
+
+def atualizar_orcamento(id_atendimento, materiais, valor_materiais, valor_mao_obra, valor_total, prazo, observacoes):
+    return (
+        supabase.table("atendimentos")
+        .update({
+            "materiais": materiais,
+            "valor_materiais": float(valor_materiais),
+            "valor_mao_obra": float(valor_mao_obra),
+            "valor_total": float(valor_total),
+            "prazo": prazo,
+            "observacoes": observacoes
+        })
+        .eq("id", id_atendimento).execute()
+    )
+
+
+def enviar_mensagem_telegram(chat_id, mensagem):
+    if not telegram_bot_token:
+        raise Exception("TELEGRAM_BOT_TOKEN não encontrado nas configurações do Streamlit.")
+    if not chat_id:
+        raise Exception("Este atendimento não possui conversa do Telegram vinculada.")
+
+    resposta = requests.post(
+        f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage",
+        json={"chat_id": str(chat_id), "text": mensagem},
+        timeout=15
+    )
+    if not resposta.ok:
+        try:
+            detalhe = resposta.json().get("description", resposta.text)
+        except Exception:
+            detalhe = resposta.text
+        raise Exception(f"Telegram recusou o envio: {detalhe}")
+    return resposta.json()
 
 
 # ==================================================
@@ -835,119 +866,190 @@ Observação técnica:
 
 elif pagina == "📚 Histórico":
 
-    st.title(
-        "📚 Histórico de atendimentos"
-    )
+    st.title("📚 Histórico de atendimentos")
+    st.caption("Revise a solicitação, prepare o orçamento e envie ao cliente pelo Telegram.")
 
     try:
-
-        atendimentos = (
-            buscar_atendimentos()
-        )
+        atendimentos = buscar_atendimentos()
 
         if not atendimentos:
-
-            st.info(
-                "Nenhum atendimento registrado ainda."
-            )
-
+            st.info("Nenhum atendimento registrado ainda.")
         else:
-
             for atendimento in atendimentos:
-
                 id_atendimento = atendimento["id"]
+                data = atendimento.get("data", "")
+                cliente_nome = atendimento.get("cliente", "") or "Cliente"
+                categoria = atendimento.get("categoria", "") or ""
+                servico = atendimento.get("servico", "") or ""
+                localizacao = atendimento.get("localizacao", "") or ""
+                mensagem_original = atendimento.get("mensagem_original", "") or ""
+                resumo = atendimento.get("resumo", "") or ""
+                telegram_chat_id = atendimento.get("telegram_chat_id")
+                status = atendimento.get("status", "Em revisão") or "Em revisão"
+                valor_total_atual = float(atendimento.get("valor_total", 0) or 0)
 
-                data = atendimento.get(
-                    "data",
-                    ""
-                )
+                with st.expander(f"#{id_atendimento} — {cliente_nome} — {servico}"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.write("**Data:**", data)
+                        st.write("**Categoria:**", categoria or "Não informada")
+                        st.write("**Serviço:**", servico or "Não informado")
+                    with c2:
+                        st.write("**Localização:**", localizacao or "Não informada")
+                        st.write("**Status:**", status)
+                        st.write("**Valor atual:**", f"R$ {valor_total_atual:,.2f}")
 
-                cliente_nome = atendimento.get(
-                    "cliente",
-                    ""
-                )
+                    if resumo:
+                        st.write("**Resumo da solicitação:**")
+                        st.info(resumo)
+                    if mensagem_original:
+                        st.write("**Mensagem recebida:**")
+                        st.write(mensagem_original)
 
-                servico = atendimento.get(
-                    "servico",
-                    ""
-                )
+                    if telegram_chat_id:
+                        st.success("📨 Atendimento conectado ao Telegram.")
+                    else:
+                        st.info("Atendimento antigo/manual: sem conversa do Telegram vinculada.")
 
-                localizacao = atendimento.get(
-                    "localizacao",
-                    ""
-                )
+                    st.divider()
+                    st.subheader("📋 Preparar orçamento")
 
-                valor_total = float(
-                    atendimento.get(
-                        "valor_total",
-                        0
-                    ) or 0
-                )
-
-                status = atendimento.get(
-                    "status",
-                    "Em revisão"
-                )
-
-                with st.expander(
-                    f"#{id_atendimento} — "
-                    f"{cliente_nome} — {servico}"
-                ):
-
-                    st.write(
-                        "**Data:**",
-                        data
+                    materiais = st.text_area(
+                        "Materiais previstos",
+                        value=atendimento.get("materiais", "") or "",
+                        height=100,
+                        key=f"materiais_{id_atendimento}"
                     )
 
-                    st.write(
-                        "**Localização:**",
-                        localizacao
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        valor_materiais = st.number_input(
+                            "Valor dos materiais (R$)",
+                            min_value=0.0,
+                            value=float(atendimento.get("valor_materiais", 0) or 0),
+                            step=10.0,
+                            format="%.2f",
+                            key=f"valor_materiais_{id_atendimento}"
+                        )
+                        prazo = st.text_input(
+                            "Prazo estimado",
+                            value=atendimento.get("prazo", "") or "",
+                            key=f"prazo_{id_atendimento}"
+                        )
+                    with c2:
+                        valor_mao_obra = st.number_input(
+                            "Valor da mão de obra (R$)",
+                            min_value=0.0,
+                            value=float(atendimento.get("valor_mao_obra", 0) or 0),
+                            step=10.0,
+                            format="%.2f",
+                            key=f"valor_mao_obra_{id_atendimento}"
+                        )
+                        valor_total = valor_materiais + valor_mao_obra
+                        st.metric("Valor total", f"R$ {valor_total:,.2f}")
+
+                    observacoes = st.text_area(
+                        "Observações do profissional",
+                        value=atendimento.get("observacoes", "") or "Orçamento sujeito à avaliação técnica no local.",
+                        key=f"observacoes_{id_atendimento}"
                     )
 
-                    st.write(
-                        "**Valor:**",
-                        f"R$ {valor_total:,.2f}"
+                    proposta = f"""ORÇAMENTO DE SERVIÇO
+
+Olá, {cliente_nome}!
+
+Seu orçamento foi preparado e revisado pelo profissional.
+
+Serviço:
+{servico or "A definir"}
+
+Localização:
+{localizacao or "Não informada"}
+
+Materiais previstos:
+{materiais if materiais.strip() else "A definir após avaliação."}
+
+Valor dos materiais:
+R$ {valor_materiais:,.2f}
+
+Valor da mão de obra:
+R$ {valor_mao_obra:,.2f}
+
+VALOR TOTAL:
+R$ {valor_total:,.2f}
+
+Prazo estimado:
+{prazo if prazo.strip() else "A definir."}
+
+Observações:
+{observacoes if observacoes.strip() else "Sem observações adicionais."}
+
+Se quiser confirmar ou tirar alguma dúvida, pode responder por aqui."""
+
+                    st.subheader("📄 Mensagem que será enviada")
+                    mensagem_final = st.text_area(
+                        "Revise antes do envio:",
+                        value=proposta,
+                        height=330,
+                        key=f"proposta_{id_atendimento}"
                     )
+                    st.caption("A IA organiza. O profissional define valores, revisa e aprova.")
 
-                    opcoes_status = [
-                        "Em revisão",
-                        "Enviado",
-                        "Aguardando retorno",
-                        "Aprovado",
-                        "Recusado"
-                    ]
+                    cs, ce = st.columns(2)
+                    with cs:
+                        if st.button("💾 Salvar orçamento", key=f"salvar_{id_atendimento}", use_container_width=True):
+                            try:
+                                atualizar_orcamento(
+                                    id_atendimento, materiais, valor_materiais,
+                                    valor_mao_obra, valor_total, prazo, observacoes
+                                )
+                                st.success("Orçamento salvo com sucesso!")
+                            except Exception as e:
+                                st.error("Não foi possível salvar o orçamento.")
+                                st.code(str(e))
 
-                    indice = (
-                        opcoes_status.index(status)
-                        if status in opcoes_status
-                        else 0
-                    )
+                    with ce:
+                        if telegram_chat_id:
+                            if st.button(
+                                "📤 Aprovar e enviar ao cliente",
+                                type="primary",
+                                key=f"enviar_{id_atendimento}",
+                                use_container_width=True
+                            ):
+                                try:
+                                    atualizar_orcamento(
+                                        id_atendimento, materiais, valor_materiais,
+                                        valor_mao_obra, valor_total, prazo, observacoes
+                                    )
+                                    enviar_mensagem_telegram(telegram_chat_id, mensagem_final)
+                                    atualizar_status(id_atendimento, "Aguardando retorno")
+                                    st.success("Orçamento enviado ao cliente pelo Telegram! ✅")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error("O orçamento não foi enviado. O status não foi alterado.")
+                                    st.code(str(e))
+                        else:
+                            st.button(
+                                "📤 Enviar pelo Telegram",
+                                disabled=True,
+                                key=f"sem_telegram_{id_atendimento}",
+                                use_container_width=True
+                            )
 
+                    st.divider()
+                    opcoes_status = ["Em revisão", "Enviado", "Aguardando retorno", "Aprovado", "Recusado"]
+                    indice = opcoes_status.index(status) if status in opcoes_status else 0
                     novo_status = st.selectbox(
-                        "Status",
+                        "Alterar status manualmente",
                         opcoes_status,
                         index=indice,
-                        key=(
-                            f"status_"
-                            f"{id_atendimento}"
-                        )
+                        key=f"status_{id_atendimento}"
                     )
-
                     if novo_status != status:
-
-                        atualizar_status(
-                            id_atendimento,
-                            novo_status
-                        )
-
-                        st.success(
-                            "Status atualizado!"
-                        )
-
+                        atualizar_status(id_atendimento, novo_status)
+                        st.success("Status atualizado!")
                         st.rerun()
 
-    except Exception:
-
-        st.error(
-            "Não foi possível carregar o histórico."
-        )
+    except Exception as e:
+        st.error("Não foi possível carregar o histórico.")
+        st.code(str(e))
