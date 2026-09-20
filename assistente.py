@@ -884,6 +884,7 @@ elif pagina == "📚 Histórico":
                 localizacao = atendimento.get("localizacao", "") or ""
                 mensagem_original = atendimento.get("mensagem_original", "") or ""
                 resumo = atendimento.get("resumo", "") or ""
+                observacoes_banco = atendimento.get("observacoes", "") or ""
                 telegram_chat_id = atendimento.get("telegram_chat_id")
                 status = atendimento.get("status", "Em revisão") or "Em revisão"
                 valor_total_atual = float(atendimento.get("valor_total", 0) or 0)
@@ -905,6 +906,10 @@ elif pagina == "📚 Histórico":
                     if mensagem_original:
                         st.write("**Mensagem recebida:**")
                         st.write(mensagem_original)
+
+                    if telegram_chat_id and observacoes_banco:
+                        with st.expander("💬 Histórico interno da conversa no Telegram"):
+                            st.text(observacoes_banco)
 
                     if telegram_chat_id:
                         st.success("📨 Atendimento conectado ao Telegram.")
@@ -948,17 +953,17 @@ elif pagina == "📚 Histórico":
                         valor_total = valor_materiais + valor_mao_obra
                         st.metric("Valor total", f"R$ {valor_total:,.2f}")
 
+                    observacao_padrao = "Orçamento sujeito à avaliação técnica no local."
                     observacoes = st.text_area(
-                        "Observações do profissional",
-                        value=atendimento.get("observacoes", "") or "Orçamento sujeito à avaliação técnica no local.",
-                        key=f"observacoes_{id_atendimento}"
+                        "Observações do orçamento",
+                        value=observacao_padrao if telegram_chat_id else (observacoes_banco or observacao_padrao),
+                        key=f"observacoes_orcamento_{id_atendimento}",
+                        help="Somente este texto poderá aparecer no orçamento enviado ao cliente."
                     )
 
                     proposta = f"""ORÇAMENTO DE SERVIÇO
 
 Olá, {cliente_nome}!
-
-Seu orçamento foi preparado e revisado pelo profissional.
 
 Serviço:
 {servico or "A definir"}
@@ -981,26 +986,32 @@ R$ {valor_total:,.2f}
 Prazo estimado:
 {prazo if prazo.strip() else "A definir."}
 
-Observações:
+Observação:
 {observacoes if observacoes.strip() else "Sem observações adicionais."}
 
-Se quiser confirmar ou tirar alguma dúvida, pode responder por aqui."""
+Se quiser confirmar o serviço ou tirar alguma dúvida, pode responder por aqui."""
 
                     st.subheader("📄 Mensagem que será enviada")
 
-                    st.text_area(
-                        "Prévia atualizada automaticamente:",
-                        value=proposta,
-                        height=330,
-                        key=f"previa_atual_{id_atendimento}",
-                        disabled=True
+                    chave_msg = f"mensagem_orcamento_{id_atendimento}"
+                    chave_base = f"base_orcamento_{id_atendimento}"
+
+                    if (
+                        chave_msg not in st.session_state
+                        or st.session_state.get(chave_base) != proposta
+                    ):
+                        st.session_state[chave_msg] = proposta
+                        st.session_state[chave_base] = proposta
+
+                    mensagem_final = st.text_area(
+                        "Revise e edite antes do envio:",
+                        key=chave_msg,
+                        height=330
                     )
 
-                    mensagem_final = proposta
-
                     st.caption(
-                        "A prévia acompanha automaticamente os valores acima. "
-                        "A IA organiza; o profissional define valores, revisa e aprova."
+                        "O orçamento é gerado com os dados acima, mas o profissional "
+                        "pode ajustar a mensagem antes de aprovar o envio."
                     )
 
                     cs, ce = st.columns(2)
