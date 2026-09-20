@@ -14,6 +14,138 @@ st.set_page_config(
     layout="wide"
 )
 
+st.markdown("""
+<style>
+    .stApp {
+        background: #f6f9ff;
+    }
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
+        border-right: 1px solid #e5ecf7;
+    }
+    [data-testid="stSidebar"] h1 {
+        color: #0b1739;
+        font-size: 1.75rem;
+        letter-spacing: -0.04em;
+    }
+    [data-testid="stSidebar"] .stRadio > label {
+        color: #60708f;
+    }
+    .block-container {
+        max-width: 1450px;
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+    }
+    h1, h2, h3 {
+        color: #0b1739;
+        letter-spacing: -0.025em;
+    }
+    div[data-testid="stMetric"] {
+        background: white;
+        border: 1px solid #e4ebf6;
+        border-radius: 18px;
+        padding: 18px 20px;
+        box-shadow: 0 6px 22px rgba(27, 63, 122, 0.06);
+    }
+    div[data-testid="stMetric"] label {
+        color: #637392 !important;
+    }
+    div[data-testid="stMetricValue"] {
+        color: #155eef;
+    }
+    div[data-testid="stExpander"] {
+        background: white;
+        border: 1px solid #e4ebf6;
+        border-radius: 16px;
+        box-shadow: 0 5px 18px rgba(27, 63, 122, 0.05);
+        overflow: hidden;
+    }
+    .stButton > button {
+        border-radius: 12px;
+        min-height: 42px;
+        font-weight: 650;
+    }
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(90deg, #1769ff 0%, #3157f5 100%);
+        border: 0;
+    }
+    .stTextInput input, .stNumberInput input, .stTextArea textarea {
+        border-radius: 12px !important;
+    }
+    .dops-hero {
+        display:flex;
+        justify-content:space-between;
+        gap:24px;
+        align-items:center;
+        margin: 4px 0 22px 0;
+    }
+    .dops-hero h1 {
+        font-size: 2.6rem;
+        margin:0;
+    }
+    .dops-hero p {
+        color:#657493;
+        font-size:1.08rem;
+        margin:.35rem 0 0 0;
+    }
+    .dops-banner {
+        background: linear-gradient(90deg,#e8f0ff,#eadcff);
+        border-radius:16px;
+        padding:18px 24px;
+        color:#18328f;
+        font-weight:700;
+        min-width:340px;
+    }
+    .dops-flow {
+        display:grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap:12px;
+        margin: 20px 0 28px 0;
+    }
+    .dops-step {
+        background:#fff;
+        border:1px solid #e4ebf6;
+        border-radius:16px;
+        padding:16px;
+        min-height:155px;
+        box-shadow:0 5px 18px rgba(27,63,122,.05);
+    }
+    .dops-step .num {
+        display:inline-flex;
+        width:30px;height:30px;
+        align-items:center;justify-content:center;
+        border-radius:50%;
+        background:#edf3ff;
+        color:#155eef;
+        font-weight:800;
+        margin-bottom:10px;
+    }
+    .dops-step b {
+        display:block;
+        color:#0b1739;
+        margin-bottom:7px;
+    }
+    .dops-step span {
+        color:#657493;
+        font-size:.92rem;
+        line-height:1.35;
+    }
+    .dops-beta {
+        background:#eaf4ff;
+        border:1px solid #d6e9ff;
+        color:#245a9b;
+        border-radius:14px;
+        padding:13px 16px;
+        margin-top:24px;
+    }
+    @media (max-width: 900px) {
+        .dops-hero {display:block;}
+        .dops-banner {margin-top:14px;min-width:0;}
+        .dops-flow {grid-template-columns:1fr;}
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # ==================================================
 # CONFIGURAÇÕES
 # ==================================================
@@ -298,7 +430,8 @@ if "mensagem_original" not in st.session_state:
 # MENU
 # ==================================================
 
-st.sidebar.title("⚡ Assistente")
+st.sidebar.title("🔵 DOPS")
+st.sidebar.caption("Assistente Operacional")
 
 pagina = st.sidebar.radio(
     "Menu",
@@ -309,7 +442,12 @@ pagina = st.sidebar.radio(
     ]
 )
 
-st.sidebar.caption("Beta 0.6 • Supabase")
+st.sidebar.caption("V4 Beta • Telegram + IA")
+st.sidebar.markdown("---")
+st.sidebar.caption("EM DESENVOLVIMENTO")
+st.sidebar.caption("👥 Clientes  •  📄 Modelos")
+st.sidebar.caption("📅 Agenda  •  📊 Relatórios")
+st.sidebar.caption("⚙️ Configurações")
 
 st.sidebar.divider()
 st.sidebar.caption(f"Conectado: {st.session_state.get('usuario_email', '')}")
@@ -335,57 +473,84 @@ if st.sidebar.button("🚪 Sair"):
 
 if pagina == "🏠 Dashboard":
 
-    st.title("⚡ Assistente Operacional")
-
-    st.caption(
-        "Atendimento e orçamento assistidos por IA"
-    )
-
-    st.divider()
-
     total = contar_status()
+    em_revisao = contar_status("Em revisão")
+    aguardando = contar_status("Aguardando retorno")
+    enviados = contar_status("Enviado") + aguardando
 
-    em_revisao = contar_status(
-        "Em revisão"
-    )
+    st.markdown("""
+    <div class="dops-hero">
+        <div>
+            <h1>Olá, profissional 👋</h1>
+            <p>Aqui está o resumo da sua operação.</p>
+        </div>
+        <div class="dops-banner">
+            Menos tempo com burocracia.<br>
+            Mais tempo para o que realmente importa.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    aguardando = contar_status(
-        "Aguardando retorno"
-    )
-
-    col1, col2, col3 = st.columns(3)
-
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric(
-            "Solicitações registradas",
-            total
-        )
-
+        st.metric("Solicitações registradas", total)
     with col2:
-        st.metric(
-            "Orçamentos em revisão",
-            em_revisao
-        )
-
+        st.metric("Em análise", em_revisao)
     with col3:
-        st.metric(
-            "Aguardando retorno",
-            aguardando
+        st.metric("Orçamentos enviados", enviados)
+    with col4:
+        st.metric("Aguardando retorno", aguardando)
+
+    st.markdown("""
+    <div class="dops-flow">
+        <div class="dops-step">
+            <div class="num">1</div>
+            <b>Cliente entra em contato</b>
+            <span>Recebe a solicitação pelo Telegram e a IA inicia a conversa.</span>
+        </div>
+        <div class="dops-step">
+            <div class="num">2</div>
+            <b>IA coleta e organiza</b>
+            <span>Faz perguntas, coleta as informações e estrutura a solicitação.</span>
+        </div>
+        <div class="dops-step">
+            <div class="num">3</div>
+            <b>Você revisa e define</b>
+            <span>Analisa as informações, define valores e prepara o orçamento.</span>
+        </div>
+        <div class="dops-step">
+            <div class="num">4</div>
+            <b>Orçamento enviado</b>
+            <span>O cliente recebe o orçamento diretamente no Telegram.</span>
+        </div>
+        <div class="dops-step">
+            <div class="num">5</div>
+            <b>Aguardando retorno</b>
+            <span>O acompanhamento continua pelo painel e pelo canal do cliente.</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.subheader("📌 Operação atual")
+    c1, c2 = st.columns([1.25, 1])
+
+    with c1:
+        st.info(
+            "O beta já recebe solicitações pelo Telegram, organiza as informações "
+            "com IA e envia o orçamento aprovado pelo profissional de volta ao cliente."
         )
 
-    st.divider()
+    with c2:
+        st.success(
+            "Fluxo em validação: Telegram → IA → Supabase → Painel → Orçamento → Telegram"
+        )
 
-    st.subheader("👋 Olá, Patrick")
-
-    st.write(
-        "Aqui você acompanha as solicitações "
-        "recebidas e os orçamentos preparados."
-    )
-
-    st.info(
-        "Use o menu lateral para registrar "
-        "uma nova solicitação."
-    )
+    st.markdown("""
+    <div class="dops-beta">
+        ℹ️ <b>Versão Beta:</b> o núcleo do fluxo está funcional. Clientes, agenda,
+        modelos, relatórios e outras automações fazem parte da evolução planejada do produto.
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ==================================================
